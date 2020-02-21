@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>WMS Layer</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.31/dijit/themes/tundra/tundra.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.31/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .esriControlsBR{
+            visibility: hidden;
+        }
+
+        #updateLayerVisibility_btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+
+        #updateLabelVisibility_btn {
+            position: absolute;
+            right: 10px;
+            top: 35px;
+        }
+
+        .dds {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+
+        .resultList>ul>li {
+            border-bottom: 1px solid #e3e6ec;
+            display: block;
+        }
+
+        .resultList>ul>li:hover svg {
+            fill: #2561a0;
+        }
+
+        .resultList>ul>li .titleTxt {
+            color: #54698d;
+        }
+
+        .popup__title {
+            font-weight: 500;
+            font-size: 1.0625rem;
+            line-height: 1.25;
+            color: #0070d2;
+            text-decoration: none;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .txt-sm .resultList>ul>li .titleTxt {
+            color: #000304;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .txt-sm {
+            color: #16325c;
+        }
+
+        .esriPopup .titlePane .title {
+            visibility: hidden;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://js.arcgis.com/3.31/"></script>
+    <script>
+        var app = {};
+        require([
+            "esri/map", "esri/basemaps",
+            "esri/layers/FeatureLayer", "esri/layers/VectorTileLayer", "esri/layers/LabelClass",
+            "esri/request", "esri/config",
+            "esri/tasks/ClassBreaksDefinition",
+            "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol", "esri/symbols/TextSymbol",
+            "esri/dijit/Legend",
+            "dojo/parser", "dojo/_base/array", "esri/Color", "dojo/dom-style",
+            "dojo/json", "dojo/dom",
+            "dojo/data/ItemFileReadStore",
+            "dijit/registry", "esri/SpatialReference", "esri/geometry/webMercatorUtils",
+            "esri/tasks/AlgorithmicColorRamp",
+            "esri/tasks/GenerateRendererParameters", "esri/tasks/GenerateRendererTask",
+            "esri/dijit/PopupTemplate", "esri/layers/WFSLayer",
+            'esri/layers/WMSLayer', 'esri/layers/WMSLayerInfo', 'esri/geometry/Extent',
+
+            "dijit/layout/BorderContainer", "dijit/layout/ContentPane", "dijit/form/FilteringSelect",
+            "dojo/domReady!"
+        ], function (
+            Map, BaseMap,
+            FeatureLayer, VectorTileLayer, LabelClass,
+            esriRequest, esriConfig,
+            ClassBreaksDefinition,
+            SimpleFillSymbol, SimpleLineSymbol, TextSymbol,
+            Legend,
+            parser, arrayUtils, Color, domStyle,
+            JSON, dom,
+            ItemFileReadStore,
+            registry, SpatialReference, webMercatorUtils,
+            AlgorithmicColorRamp, GenerateRendererParameters,
+            GenerateRendererTask,
+            PopupTemplate, WFSLayer,
+            WMSLayer, WMSLayerInfo, Extent) {
+
+            app.map = new Map("map", {
+                showAttribution: false,
+                basemap: "streets-vector",
+                center: [-97.91016562499615, 39.504002205197395],
+                zoom: 4
+            });
+
+            app.spatialReference = new SpatialReference({ wkid: 3857 });
+
+            var infoTemplate = new esri.InfoTemplate("", generateTemplateForInfoWindow);
+
+            app.isLayerVisible = true;
+            app.isLabelVisible = true;
+
+            app.layerInfo = new WMSLayerInfo({
+                name: 'cbsa',
+                title: 'cbsa'
+            });
+
+            app.resourceInfo = {
+                extent: new Extent(-131.985549926758, 24.3909645080566, -66.6264419555664, 55.5157241821289, {
+                    wkid: 3857
+                }),
+                layerInfos: app.layerInfo
+            };
+
+            app.wmsLayer = new WMSLayer('http://localhost:8080/geoserver/wms', {
+                resourceInfo: app.resourceInfo,
+                visibleLayers: ['cbsa']
+            });
+
+            function generateTemplateForInfoWindow(graphic) {
+                console.log(graphic.attributes);
+                var html = '<div class="resultList">' + '<ul style="padding-inline-start: 10px;">';
+                html = html + '<li>' + '<a "target="_blank" class="popup__title">' + "FIPS: " + graphic.attributes.fips + '</a> ';
+                html = html + ' <div class="txt-sm">  ' + ' <span class="titleTxt">' + "State FIPS" + ': </span>' + graphic.attributes.state_fips + ' </div>';
+                html = html + ' <div class="txt-sm">  ' + ' <span class="titleTxt">' + "County FIPS" + ': </span>' + graphic.attributes.cnty_fips + ' </div>';
+                html = html + '	</li> </ul>';
+                html = html + '</div> ';
+                return html;
+            }
+
+            updateLayerVisibility = function () {
+                console.log("1", app.isLayerVisible);
+                app.isLayerVisible = app.isLayerVisible ? false : true;
+                if (app.isLayerVisible) {
+                    console.log("In IF", app.isLayerVisible);
+                    app.map.getLayer("illinois").setVisibility(true)
+                } else {
+                    console.log("In ELSE", app.isLayerVisible);
+                    app.map.getLayer("illinois").setVisibility(false)
+                }
+            }
+
+            updateLabelVisibility = function () {
+                console.log("1", app.isLabelVisible);
+                app.isLabelVisible = app.isLabelVisible ? false : true;
+                if (app.isLabelVisible) {
+                    console.log("In IF", app.isLabelVisible);
+                } else {
+                    console.log("in ELSE", app.isLabelVisible);
+                }
+            }
+
+            app.censusLabel = new TextSymbol().setColor(new Color([150, 150, 150, 0.5]));
+            app.censusLabel.font.setSize("14pt");
+            app.censusLabel.font.setFamily("arial");
+
+            app.labelJSON = {
+                "labelExpressionInfo": { "value": "{fips}" }
+            };
+
+            app.labelClass = new LabelClass(app.labelJSON);
+            app.labelClass.symbol = app.censusLabel;
+
+            esriConfig.defaults.io.proxyUrl = "/DotNet/proxy.ashx";
+            esriConfig.defaults.io.corsEnabledServers.push("http://localhost:8080");
+
+            //app.layer.setLabelingInfo([app.labelClass])
+            app.map.addLayer(app.wmsLayer);
+        });
+    </script>
+</head>
+
+<body class="tundra">
+    <div id="map" style="Height:650px">
+    </div>
+    <button id="updateLayerVisibility_btn" onclick="updateLayerVisibility()">Layer</button>
+    <button id="updateLabelVisibility_btn" onclick="updateLabelVisibility()">Label</button>
+</body>
+
+</html>
