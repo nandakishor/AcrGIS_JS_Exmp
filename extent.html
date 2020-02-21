@@ -81,7 +81,7 @@
                     $.ajax({
                         dataType: "json",
                         data: geomParams,
-                        url: "https://services2.arcgis.com/JoecHEvChY6qFe2m/ArcGIS/rest/services/usa_boundary/FeatureServer/0/query/",
+                        url: "https://services2.arcgis.com/XXXXXXXXXXX/ArcGIS/rest/services/usa_boundary/FeatureServer/0/query/",
                         success: function (data2) {
                             console.log("---");
                             if (data2.spatialReference.wkid != 4326) {
@@ -89,6 +89,7 @@
                                     feature.geometry = new esri.geometry.webMercatorToGeographic(new esri.geometry.Polygon(feature.geometry.rings));
                                 });
                             }
+                            
                             app.geomData = data2
                         }
                     });
