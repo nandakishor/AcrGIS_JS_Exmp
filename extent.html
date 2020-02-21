@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Set ScaleBar Unit</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.27/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #controls {
+            background: #fff;
+            box-shadow: 0 6px 6px -6px #999;
+            color: #444;
+            font-family: sans-serif;
+            height: auto;
+            left: 1em;
+            padding: 1em;
+            position: absolute;
+            top: 1em;
+            width: auto;
+            z-index: 40;
+        }
+
+        #controls div {
+            padding: 0 0 1em 0;
+        }
+    </style>
+    <script src="https://js.arcgis.com/3.27/"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+        var map;
+        var app = {};
+
+        require([
+            "esri/map", "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol",
+            "esri/layers/FeatureLayer",
+            "esri/graphic", "esri/layers/GraphicsLayer", "esri/graphicsUtils", "esri/geometry/webMercatorUtils",
+            "esri/dijit/Scalebar",
+            "dojo/dom", "dojo/dom-attr", "dojo/domReady!"
+        ], function (
+            Map, Circle, SimpleFillSymbol,
+            FeatureLayer,
+            Graphic, GraphicsLayer, graphicsUtils, webMercatorUtils,
+            Scalebar,
+            dom, domAttr
+        ) {
+                map = new Map("map", {
+                    basemap: "streets-vector",
+                    center: [-97.163095312498, 44.40235617969788],
+                    slider: false,
+                    zoom: 6
+                });
+                scalebarUnit = "english";
+                scalebar = initEsriScalebar(map, scalebarUnit);
+
+                var symbol = new SimpleFillSymbol().setColor(null).outline.setColor("blue");
+                var gl = new GraphicsLayer({ id: "circles" });
+                var geomParams = {
+                    where: "1=1",
+                    outFields: "*",
+                    returnGeometry: true,
+                    f: "json"
+                }
+
+                var geodesic = dom.byId("geodesic");
+                map.addLayer(gl);
+
+                map.on("load", function () {
+                    //after map loads, connect to listen to mouse move & drag events
+                    map.on("mouse-move", setUnit);
+                    map.on("mouse-drag", setUnit);
+                    $.ajax({
+                        dataType: "json",
+                        data: geomParams,
+                        url: "https://services2.arcgis.com/JoecHEvChY6qFe2m/ArcGIS/rest/services/usa_boundary/FeatureServer/0/query/",
+                        success: function (data2) {
+                            console.log("---");
+                            if (data2.spatialReference.wkid != 4326) {
+                                data2.features.forEach(function (feature) {
+                                    feature.geometry = new esri.geometry.webMercatorToGeographic(new esri.geometry.Polygon(feature.geometry.rings));
+                                });
+                            }
+                            app.geomData = data2
+                        }
+                    });
+                });
+
+                map.on("click", function (e) {
+                    //var radius = map.extent.getWidth() / 10;
+                    var radius = 80467.2; // 50 mile
+                    var circle = new Circle({
+                        center: e.mapPoint,
+                        geodesic: domAttr.get(geodesic, "checked"),
+                        radius: radius
+                    });
+                    console.log("Radius: " + circle.radius + "  Zoom Leave: " + map.getZoom() + "  X: " + map.extent.getCenter().getLongitude() + "  Y: " + map.extent.getCenter().getLatitude());
+                    var graphic = new Graphic(circle, symbol);
+                    map.setExtent(graphic.geometry.getExtent());
+                    //gl.add(graphic);
+                });
+
+                function initEsriScalebar(map, scalebarUnit) {
+                    scalebar = new Scalebar({
+                        map: map,
+                        attachTo: "bottom-left",
+                        scalebarUnit: scalebarUnit,
+                        scalebarStyle: "ruler"
+                    });
+                    return scalebar;
+                }
+
+                function setUnit(evt) {
+                    if (new esri.geometry.Polygon(app.geomData.features[0].geometry.rings).contains(new esri.geometry.webMercatorToGeographic(map.extent.getCenter()))) {
+                        scalebar.destroy();
+                        scalebar = initEsriScalebar(map, "english");
+                    } else {
+                        scalebar.destroy();
+                        scalebar = initEsriScalebar(map, "metric");
+                    }
+                }
+            });
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="controls">
+        <!-- <div>Click the map.</div> -->
+        <input type="checkbox" id="geodesic">
+        <label for="geodesic">Geodesic?</label>
+    </div>
+</body>
+
+</html>
